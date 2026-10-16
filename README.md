@@ -27,6 +27,29 @@ Standard language models often respond in a generic, robotic tone and struggle w
 
 ---
 
+## System Architecture
+
+```text
+User Query (Bengali)
+       │
+       ▼
+Multilingual Sentence Embedder (paraphrase-multilingual-MiniLM-L12-v2)
+       │
+       ▼
+FAISS L2 Vector Index Search (humayun_rag.jsonl)
+       │
+       ▼
+Context Injection + System Persona Prompt
+       │
+       ▼
+Fine-Tuned HumayunAhmedAliveGPT Model (QLoRA Adapters)
+       │
+       ▼
+Authentic First-Person Response in Bengali
+```
+
+---
+
 ## How to Run on Kaggle (Inference Only + Custom Web UI)
 
 You do not need to retrain the model or manually upload any datasets. Follow these steps to launch the complete web application on Kaggle for free:
@@ -369,25 +392,3 @@ with gr.Blocks(css=FANCY_CSS, title="HumayunAhmedAliveGPT", js=FORCE_DARK_JS) as
 
 demo.launch(share=True)
 ```
-
----
-
-## System Architecture
-
-```text
-User Query (Bengali)
-       │
-       ▼
-Multilingual Sentence Embedder (paraphrase-multilingual-MiniLM-L12-v2)
-       │
-       ▼
-FAISS L2 Vector Index Search (humayun_rag.jsonl)
-       │
-       ▼
-Context Injection + System Persona Prompt
-       │
-       ▼
-Fine-Tuned HumayunAhmedAliveGPT Model (QLoRA Adapters)
-       │
-       ▼
-Authentic First-Person Response in Bengali
