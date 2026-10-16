@@ -1,6 +1,6 @@
 # HumayunAhmedAliveGPT
 
-[![Hugging Face Model](https://img.shields.io/badge/Hugging%20Face-Model%20Repository-yellow)](https://huggingface.co/YOUR_HF_USERNAME/HumayunAhmedAliveGPT)
+[![Hugging Face Model](https://img.shields.io/badge/Hugging%20Face-Model%20Repository-yellow)](https://huggingface.co/MuntasirMalek/HumayunAhmedAliveGPT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Language: Bengali](https://img.shields.io/badge/Language-Bengali-green.svg)](#)
 
