@@ -37,12 +37,23 @@ You do not need to retrain the model or manually upload any datasets. Follow the
 4. Copy and run the single cell below. It will automatically fetch the trained model from Hugging Face, load the RAG knowledge base from this GitHub repository, and generate a public `gradio.live` web link.
 
 ```python
-!pip install -q --upgrade "transformers>=5.5.0" accelerate peft bitsandbytes faiss-cpu sentence-transformers gradio requests
+!pip install -q --upgrade "transformers>=5.5.0" huggingface_hub accelerate peft bitsandbytes faiss-cpu sentence-transformers gradio requests
 
-import os, gc, json, urllib.request, torch, faiss
+import sys, importlib
+for pkg in list(sys.modules.keys()):
+    if pkg.startswith(("huggingface_hub", "transformers", "peft", "accelerate", "gradio", "sentence_transformers")):
+        del sys.modules[pkg]
+importlib.invalidate_caches()
+
+import os
+import gc
+import json
+import urllib.request
+import torch
+import faiss
 import numpy as np
 import gradio as gr
-from transformers import AutoProcessor, AutoModelForMultimodalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForMultimodalLM, BitsAndBytesConfig
 from peft import PeftConfig, PeftModel
 from sentence_transformers import SentenceTransformer
 
@@ -51,15 +62,8 @@ gc.collect()
 torch.cuda.empty_cache()
 
 HF_REPO_ID = "MuntasirMalek/HumayunAhmedAliveGPT"
-GITHUB_RAW_BASE = "[https://raw.githubusercontent.com/MuntasirMalek/HumayunAhmedAliveGPT/main](https://raw.githubusercontent.com/MuntasirMalek/HumayunAhmedAliveGPT/main)"
+GITHUB_RAW_BASE = "https://raw.githubusercontent.com/MuntasirMalek/HumayunAhmedAliveGPT/main"
 IMAGE_URL = f"{GITHUB_RAW_BASE}/Humayun-Ahmed-legacy.jpg"
-
-AVATAR_PATH = None
-try:
-    urllib.request.urlretrieve(IMAGE_URL, "humayun_avatar.jpg")
-    AVATAR_PATH = "humayun_avatar.jpg"
-except Exception:
-    AVATAR_PATH = None
 
 knowledge_chunks = []
 for filename in ["humayun_rag.jsonl", "merged_humayun_rag.jsonl", "humayun_train.jsonl", "merged_humayun_train.jsonl"]:
@@ -77,7 +81,10 @@ for filename in ["humayun_rag.jsonl", "merged_humayun_rag.jsonl", "humayun_train
         continue
 
 if not knowledge_chunks:
-    knowledge_chunks = ["হুমায়ূন আহমেদ: বাংলাদেশের প্রখ্যাত কথাসাহিত্যিক, নাট্যকার ও চলচ্চিত্র নির্মাতা।"]
+    knowledge_chunks = [
+        "হুমায়ূন আহমেদ: বাংলাদেশের প্রখ্যাত কথাসাহিত্যিক, নাট্যকার ও চলচ্চিত্র নির্মাতা। জন্ম ১৩ নভেম্বর ১৯৪৮, নেত্রকোণা।",
+        "চরিত্রসমূহ: হিমু (হলুদ পাঞ্জাবি পরা বাউণ্ডুলে যুবক), মিসির আলি (যুক্তিবাদী মনোবিজ্ঞানী), শুভ্র এবং বাকের ভাই।"
+    ]
 
 embedder = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", device="cpu")
 embeddings = embedder.encode(knowledge_chunks, convert_to_numpy=True)
@@ -92,8 +99,7 @@ bnb_config = BitsAndBytesConfig(
 )
 
 peft_config = PeftConfig.from_pretrained(HF_REPO_ID)
-processor = AutoProcessor.from_pretrained(HF_REPO_ID)
-tokenizer = processor.tokenizer if hasattr(processor, "tokenizer") else processor
+tokenizer = AutoTokenizer.from_pretrained(HF_REPO_ID)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -184,16 +190,6 @@ with gr.Blocks(css=CUSTOM_CSS, title="HumayunAhmedAliveGPT") as demo:
     gr.HTML(HEADER_HTML)
     gr.ChatInterface(
         fn=generate_response,
-        chatbot=gr.Chatbot(
-            height=460,
-            avatar_images=(None, AVATAR_PATH) if AVATAR_PATH else None,
-            placeholder="হুমায়ূন আহমেদকে আপনার প্রশ্নটি বাংলায় লিখুন..."
-        ),
-        textbox=gr.Textbox(
-            placeholder="যেমন: স্যার, হিমু কেন হলুদ পাঞ্জাবি পরে এবং পকেট রাখে না?",
-            container=False,
-            scale=7
-        ),
         examples=[
             "স্যার, হিমু কেন হলুদ পাঞ্জাবি পরে এবং পকেট রাখে না?",
             "মিসির আলি আর হিমুর মধ্যে আপনার নিজের সাথে কার মিল বেশি?",
