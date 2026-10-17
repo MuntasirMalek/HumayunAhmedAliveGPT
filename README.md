@@ -94,7 +94,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 gc.collect()
 torch.cuda.empty_cache()
 
-# 1. Repository & Portrait Setup
+# 1. Repository & 1:1 Square Avatar Setup
 HF_REPO_ID = "MuntasirMalek/HumayunAhmedAliveGPT"
 GITHUB_RAW_BASE = "https://raw.githubusercontent.com/MuntasirMalek/HumayunAhmedAliveGPT/main"
 IMAGE_URL = f"{GITHUB_RAW_BASE}/Humayun-Ahmed-legacy.jpg"
@@ -110,7 +110,7 @@ try:
 except Exception:
     SQUARE_AVATAR_PATH = None
 
-# 2. First-Person Knowledge Base & FAISS RAG Setup
+# 2. First-Person Literary Knowledge Base & FAISS RAG Setup
 GOLDEN_CHUNKS = [
     "দেবী উপন্যাসের সারাংশ: 'দেবী' আমার লেখা অন্যতম প্রিয় একটি মনস্তাত্ত্বিক ও রহস্য উপন্যাস, যা ১৯৮৫ সালে প্রকাশিত হয়। এই উপন্যাসের মাধ্যমেই আমি প্রথমবার আমার বিখ্যাত চরিত্র 'মিসির আলি'-কে পাঠকদের সামনে নিয়ে আসি। গল্পের মূল চরিত্র রানু নামের এক সদ্য বিবাহিত তরুণী। রানু দাবি করে তার ভেতর অলৌকিক ক্ষমতা আছে, সে ভবিষ্যৎ বলতে পারে এবং অদৃশ্য শক্তির উপস্থিতি টের পায়। তার স্বামী আনিস রানুর এই অস্বাভাবিক আচরণে ভয় পেয়ে আমার সৃষ্টি করা যুক্তিবাদী মনোবিজ্ঞানী মিসির আলির কাছে সাহায্য চায়। মিসির আলি রানুর শৈশবের ঘটনা অনুসন্ধান করতে গিয়ে জানতে পারেন, ছোটবেলায় মন্দিরের পাশে জালালউদ্দিন নামের এক লোকের হাতে রানু এক ভয়াবহ অভিজ্ঞতার শিকার হয়েছিল। এরপর বেনারসি শাড়ি পরা কিশোরী নীলু অপহৃত হলে রহস্য আরও ঘনীভূত হয় এবং শেষ পর্যন্ত রানুর মৃত্যু ও নীলুর মাঝে সেই সত্তার ফিরে আসার মধ্য দিয়ে আমার এই উপন্যাসটি শেষ হয়।",
     "মিসির আলি: মিসির আলি আমার সৃষ্টি করা এক যুক্তিবাদী চরিত্র, যিনি ঢাকা বিশ্ববিদ্যালয়ের মনোবিজ্ঞান বিভাগের খণ্ডকালীন অধ্যাপক। তিনি কোনো অলৌকিকতা বা ভূত-প্রেতে বিশ্বাস করেন না; মানুষের মস্তিষ্কের জটিল অসুখ ও বিভ্রমকে তীক্ষ্ণ যুক্তি দিয়ে ব্যাখ্যা করেন। আমার লেখা প্রথম মিসির আলি উপন্যাস হলো 'দেবী' এবং দ্বিতীয়টি 'নিশীথিনী'।",
@@ -148,7 +148,7 @@ embeddings = embedder.encode(knowledge_chunks, convert_to_numpy=True)
 faiss_index = faiss.IndexFlatL2(embeddings.shape[1])
 faiss_index.add(embeddings)
 
-# 3. Load Fine-Tuned QLoRA Model from Hugging Face Hub
+# 3. Load Fine-Tuned QLoRA Model & Tokenizer from Hugging Face Hub
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
@@ -185,7 +185,7 @@ model = PeftModel.from_pretrained(base_model, HF_REPO_ID)
 model.eval()
 model.config.use_cache = True
 
-# 4. Pure-Bengali Logits Processor & Banglish Query Handling
+# 4. Pure-Bengali Logits Processor & Banglish Query Normalizer
 bad_token_ids = []
 forbidden_pattern = re.compile(
     r"[a-zA-Z0-9\[\]\{\}\<\>\u00C0-\u024F\u1E00-\u1EFF\u0900-\u097F\u0400-\u08FF\u0A00-\u1DFF\u3000-\u9FFF\uAC00-\uD7AF]"
@@ -265,12 +265,20 @@ def ensure_complete_sentence(text):
     return text
 
 GREETING_PATTERN = re.compile(
-    r"^\s*(hi+|hello+|hey+|hlw+|salam|assalamu\s*alaikum|good\s*morning|good\s*evening|kemon\s*achen|kmn\s*achen|ki\s*obostha|vai|bhai|sir|হাই|হ্যালো|সালাম|আসসালামু\s*আলাইকুম|কেমন\s*আছেন|কী\s*অবস্থা|স্যার)\s*[\?\!\.]*\s*$",
+    r"^\s*(?:(?:hi+|hello+|hey+|hlw+|salam|assalamu\s*alaikum|good\s*morning|good\s*evening|kemon\s*achen|kmn\s*achen|ki\s*obostha|vai|bhai|sir|হাই|হ্যালো|সালাম|আসসালামু\s*আলাইকুম|কেমন\s*আছেন|কী\s*অবস্থা|স্যার|ভাই)\s*[\?\!\.,]*\s*){1,3}$",
     re.IGNORECASE
 )
 
+WRITING_BADGE_HTML = """
+<div class="live-writing-box">
+    <span class="pen-anim">✒️</span>
+    <span>হুমায়ূন আহমেদ লিখছেন</span>
+    <span class="dot-pulse"><span>.</span><span>.</span><span>.</span></span>
+</div>
+"""
+
 def generate_fancy_response(user_query, history, mood, temperature):
-    yield "লিখছেন..."
+    yield WRITING_BADGE_HTML
     
     is_greeting = bool(GREETING_PATTERN.match(user_query.strip()))
     
@@ -343,14 +351,14 @@ def generate_fancy_response(user_query, history, mood, temperature):
             partial_reply += new_token
             cleaned = partial_reply.replace("হুমায়ূন আহমেদের লেখা", "আমার লেখা").replace("হুমায়ূন আহমেদের লেখা", "আমার লেখা")
             if cleaned.strip():
-                yield f'{cleaned.strip()} <span class="typing-caret">▍</span>'
+                yield f'<div class="active-writing-pill"><span class="pen-anim">✒️</span> হুমায়ূন আহমেদ লিখছেন...</div>\n\n{cleaned.strip()}'
     finally:
         thread.join(timeout=2.0)
         final_clean = partial_reply.replace("হুমায়ূন আহমেদের লেখা", "আমার লেখা").replace("হুমায়ূন আহমেদের লেখা", "আমার লেখা").strip()
         if final_clean:
             yield ensure_complete_sentence(final_clean)
 
-# 5. Web UI Styling & Layout
+# 5. Dashboard Styling & UI Layout
 FANCY_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@500;700&display=swap');
 
@@ -454,8 +462,11 @@ footer { display: none !important; }
     display: none !important;
 }
 
-.chatbot:has(.typing-caret) .icon-button-wrapper {
+.chatbot:has(.live-writing-box) .icon-button-wrapper,
+.chatbot:has(.active-writing-pill) .icon-button-wrapper {
     display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 .icon-button-wrapper:not(.top-panel) button:not(:first-child),
@@ -481,14 +492,54 @@ button[title*="Undo"] {
     color: #ffffff !important;
 }
 
-.typing-caret {
-    color: #e07a5f;
-    font-weight: bold;
-    animation: caretBlink 0.8s infinite;
+.live-writing-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(224, 122, 95, 0.14);
+    border: 1px solid rgba(224, 122, 95, 0.4);
+    color: #f4a261;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 600;
 }
-@keyframes caretBlink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+.active-writing-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(224, 122, 95, 0.14);
+    border: 1px solid rgba(224, 122, 95, 0.35);
+    color: #f4a261;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 12px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    animation: pulseGlow 1.5s infinite ease-in-out;
+}
+.pen-anim {
+    display: inline-block;
+    animation: penWrite 0.55s infinite alternate ease-in-out;
+}
+@keyframes penWrite {
+    0% { transform: translateY(0px) rotate(0deg); }
+    100% { transform: translateY(-3px) rotate(-15deg); }
+}
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+.dot-pulse span {
+    animation: blinkDots 1.4s infinite both;
+    font-weight: bold;
+    font-size: 16px;
+}
+.dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+.dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blinkDots {
+    0%, 80%, 100% { opacity: 0; }
+    40% { opacity: 1; }
 }
 
 .avatar-container,
